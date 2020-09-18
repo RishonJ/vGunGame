@@ -1,2 +1,2 @@
 # StrixGunGame
- Simple GunGame game for TopStirx
+ Simple GunGame plugin source code
