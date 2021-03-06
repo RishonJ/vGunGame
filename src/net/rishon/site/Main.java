@@ -1,15 +1,24 @@
 package net.rishon.site;
 
+import com.gmail.filoghost.holograms.api.Hologram;
+import com.gmail.filoghost.holograms.api.HolographicDisplaysAPI;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import net.rishon.site.Commands.*;
-import net.rishon.site.FileManager.LobbyData;
-import net.rishon.site.FileManager.PlayerData;
+import net.rishon.site.Commands.Admin.*;
+import net.rishon.site.Commands.Admin.Levels.GetLevel;
+import net.rishon.site.Commands.Admin.Levels.SetLevel;
+import net.rishon.site.Commands.Moderation.Fly;
+import net.rishon.site.Commands.Moderation.Teleport;
+import net.rishon.site.FileManager.*;
+import net.rishon.site.GUI.Shop.ShopInteractions;
 import net.rishon.site.ItemBuilder.Levels;
 import net.rishon.site.Listeners.*;
 import net.rishon.site.Scoreboard.PlayerSB;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
@@ -28,7 +37,9 @@ public class Main extends JavaPlugin implements Listener {
 
     public static HashSet<Inventory> inventory;
 
-    @Override
+    public static HolographicDisplaysAPI hologram;
+
+
     public void onEnable() {
 
         instance = this;
@@ -38,17 +49,22 @@ public class Main extends JavaPlugin implements Listener {
 
         getDataFolder().mkdir();
         getDataFolder().mkdirs();
-        PlayerData.mk();
-        LobbyData.mk();
 
-        restart();
+        SwearData.mk();
+        LobbyData.mk();
+        HoloData.mk();
+        LBData.mk();
+       // restart();
         listeners();
         commands();
-        scoreboard();
+
+        utils();
 
         for(Player server : Bukkit.getOnlinePlayers()) {
+            PlayerData.mk(server);
+
             PlayerData.tryInit(server);
-            PlayerData.edit(server.getUniqueId().toString() + ".name", server.getName());
+            PlayerData.edit(server.getUniqueId().toString() + ".name", server.getName(), server);
             getLevel.put(server, 1);
             killstreak.put(server, 0);
             clear(server);
@@ -70,19 +86,30 @@ public class Main extends JavaPlugin implements Listener {
         getLogger().info("§cGunGame has been disabled. | Rishon");
 
         for(Player server : Bukkit.getOnlinePlayers()) {
-            server.sendMessage("§cGunGame is restarting.");
-            server.kickPlayer("...");
+          server.sendMessage("§cGunGame is restarting.");
+           server.kickPlayer("§cGunGame is restarting.");
+       }
+
+        try {
+            for(Hologram holo : HolographicDisplaysAPI.getHolograms(Main.instance)) {
+                holo.delete();
+            }
+        } catch (Exception e) {
+            return;
         }
+
     }
 
 
     private void listeners() {
 
         Bukkit.getPluginManager().registerEvents(this, this);
-        Bukkit.getPluginManager().registerEvents(new Connect(), this);
+        Bukkit.getPluginManager().registerEvents(new Connection(), this);
         Bukkit.getPluginManager().registerEvents(new Death(), this);
-        Bukkit.getPluginManager().registerEvents(new Disconnect(), this);
+        Bukkit.getPluginManager().registerEvents(new WaterDeath(), this);
+        Bukkit.getPluginManager().registerEvents(new Filter(), this);
         Bukkit.getPluginManager().registerEvents(new Interactions(), this);
+        Bukkit.getPluginManager().registerEvents(new ShopInteractions(), this);
         Bukkit.getPluginManager().registerEvents(new Respawn(), this);
     }
 
@@ -90,9 +117,17 @@ public class Main extends JavaPlugin implements Listener {
 
         getCommand("setlevel").setExecutor(new SetLevel());
         getCommand("getlevel").setExecutor(new GetLevel());
+        getCommand("teleport").setExecutor(new Teleport());
+        getCommand("fly").setExecutor(new Fly());
+        getCommand("gamemode").setExecutor(new Gamemode());
         getCommand("setlobby").setExecutor(new SetLobby());
+        getCommand("setholo").setExecutor(new SetHolo());
         getCommand("setcoins").setExecutor(new SetCoins());
         getCommand("profile").setExecutor(new Profile());
+        getCommand("shop").setExecutor(new Shop());
+        getCommand("team").setExecutor(new Team());
+        getCommand("ping").setExecutor(new Ping());
+        getCommand("addswear").setExecutor(new AddSwear());
     }
 
     public static void clear(Player player) {
@@ -107,9 +142,9 @@ public class Main extends JavaPlugin implements Listener {
 
     }
 
-    private void scoreboard() {
+    private void utils() {
         try {
-            Bukkit.getScheduler().scheduleAsyncRepeatingTask(Main.instance, new Runnable() {
+            Bukkit.getScheduler().scheduleSyncRepeatingTask(Main.instance, new Runnable() {
                 @Override
                 public void run() {
                     for (Player server : Bukkit.getOnlinePlayers()) {
@@ -118,10 +153,29 @@ public class Main extends JavaPlugin implements Listener {
                 }
             }, 0L, 100L);
 
+            Bukkit.getScheduler().scheduleSyncRepeatingTask(Main.instance, new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        for (Hologram holo : HolographicDisplaysAPI.getHolograms(Main.instance)) {
+                            holo.delete();
+                        }
+
+                    } catch (Exception e) {
+                        return;
+                    }
+
+                    hologram.createHologram(Main.instance, HoloData.getHolo(), "§8• §bLeaderboard §8•",
+                            "§6Most Kills §8• §f" + LBData.getConfig().getString("kills-player") + " §8• §f" + LBData.getConfig().getInt("kills"),
+                            "§6Highest Killstreak §8• §f" + LBData.getConfig().getString("ks-player") + " §8• §f" + LBData.getConfig().getInt("ks"),
+                            "§7play.topstrix.net");
+                }
+            }, 0L, 20 * 60);
+
+
         } catch (IllegalArgumentException e) {
             return;
         }
-
     }
 
     private void restart() {
@@ -133,7 +187,7 @@ public class Main extends JavaPlugin implements Listener {
 
             }
 
-        }, 20 * 60 * 59);
+        }, 20 * 60 * 89);
 
             Bukkit.getScheduler().runTaskLater(Main.instance, new Runnable() {
                 @Override
@@ -149,7 +203,7 @@ public class Main extends JavaPlugin implements Listener {
 
                     }
 
-            }, 20 * 60 * 60);
+            }, 20 * 60 * 90);
 
     }
 
@@ -171,27 +225,48 @@ public class Main extends JavaPlugin implements Listener {
                 break;
             case 50:
                 Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §f50 Killstreak.");
+               // GlowAPI.setGlowing(player, GlowAPI.Color.WHITE, Bukkit.getOnlinePlayers());
                 break;
             case 60:
                 Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §f§l60 Killstreak.");
+              //  GlowAPI.setGlowing(player, GlowAPI.Color.WHITE, Bukkit.getOnlinePlayers());
                 break;
             case 70:
                 Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §e70 Killstreak.");
+             //   GlowAPI.setGlowing(player, GlowAPI.Color.YELLOW, Bukkit.getOnlinePlayers());
                 break;
             case 80:
                 Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §e§l80 Killstreak.");
+               // GlowAPI.setGlowing(player, GlowAPI.Color.YELLOW, Bukkit.getOnlinePlayers());
                 break;
             case 90:
                 Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §490 Killstreak.");
+              //  GlowAPI.setGlowing(player, GlowAPI.Color.DARK_RED, Bukkit.getOnlinePlayers());
                 break;
             case 100:
+                for(Player game : Bukkit.getOnlinePlayers()) {
+                    game.playSound(game.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1, 5);
+                }
                 Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §4§l100 Killstreak.");
+              //  GlowAPI.setGlowing(player, GlowAPI.Color.DARK_RED, Bukkit.getOnlinePlayers());
                 break;
             case 125:
                 Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §0125 Killstreak.");
+               // GlowAPI.setGlowing(player, GlowAPI.Color.BLACK, Bukkit.getOnlinePlayers());
                 break;
             case 150:
+                for(Player game : Bukkit.getOnlinePlayers()) {
+                    game.playSound(game.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1, 5);
+                }
                 Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §0§l150 Killstreak.");
+              //  GlowAPI.setGlowing(player, GlowAPI.Color.BLACK, Bukkit.getOnlinePlayers());
+                break;
+            case 300:
+                for(Player game : Bukkit.getOnlinePlayers()) {
+                    game.playSound(game.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1, 5);
+                }
+                Bukkit.broadcastMessage(ChatColor.RED + player.getName() + " §7is on a §d§l300 KILLSTREAK!");
+              //  GlowAPI.setGlowing(player, GlowAPI.Color.PURPLE, Bukkit.getOnlinePlayers());
                 break;
         }
     }

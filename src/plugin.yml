@@ -1,10 +1,22 @@
-name: StrixGunGame
+name: GunGame
 main: net.rishon.site.Main
 author: Rishon
-version: 1.0
+api-version: 1.13
+version: 2.0
+depend: [GlowAPI, HolographicDisplays]
 commands:
   setlevel:
+  setholo:
+  shop:
   setlobby:
   setcoins:
   profile:
   getlevel:
+  teleport:
+    aliases: [tp]
+  gamemode:
+    aliases: [gm]
+  fly:
+  team:
+  ping:
+  addswear:

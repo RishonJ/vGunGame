@@ -5,6 +5,7 @@ import net.rishon.site.FileManager.PlayerData;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -16,8 +17,8 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
-
-
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.event.weather.WeatherChangeEvent;
 
 
 public class Interactions
@@ -37,6 +38,20 @@ public class Interactions
         }
     }
 
+    @EventHandler
+    public void onRain(WeatherChangeEvent event){
+        World world = event.getWorld();
+        if(world.hasStorm()){
+            world.setWeatherDuration(0);
+        }
+    }
+
+    @EventHandler
+    private void onSwap(PlayerSwapHandItemsEvent event) {
+        if (!(event.getPlayer().getGameMode() == GameMode.CREATIVE)) {
+            event.setCancelled(true);
+        }
+    }
 
     @EventHandler
     private void NoPickup(PlayerPickupItemEvent event) {
@@ -78,12 +93,11 @@ public class Interactions
     @EventHandler
     private void waterDeath(PlayerMoveEvent event) {
 
-        if(!(event.getPlayer().getGameMode() == GameMode.CREATIVE)) {
-            if (event.getPlayer().getLocation().getBlock().getType() == Material.WATER || event.getPlayer().getLocation().getBlock().getType() == Material.STATIONARY_WATER) {
-                event.getPlayer().teleport(LobbyData.getLobby());
+        if(!(event.getPlayer().getGameMode() == GameMode.CREATIVE || event.getPlayer().getGameMode() == GameMode.SPECTATOR)) {
+            if (event.getPlayer().getLocation().getBlock().getType() == Material.WATER || event.getPlayer().getLocation().getBlock().getType() == Material.LEGACY_STATIONARY_WATER) {
+                // event.getPlayer().teleport(LobbyData.getLobby());
                 event.getPlayer().setHealth(0.0D);
                 PlayerData.addDeath(event.getPlayer());
-                event.getPlayer().spigot().respawn();
             }
         }
     }

@@ -1,8 +1,6 @@
 package net.rishon.site.ItemBuilder;
 
 
-import java.util.Map;
-
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
@@ -53,7 +51,7 @@ public class ItemBuilder {
 
     public ItemBuilder setUnbreakable(boolean unbreakable) {
         ItemMeta meta = item.getItemMeta();
-        meta.spigot().setUnbreakable(unbreakable);
+        meta.setUnbreakable(true);
         item.setItemMeta(meta);
         return this;
     }
