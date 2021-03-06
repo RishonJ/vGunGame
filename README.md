@@ -1,2 +1,2 @@
-# StrixGunGame
- Simple GunGame plugin source code
+# rGunGame
+A Minecraft plugin which makes you advance after every kill.
